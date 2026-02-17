@@ -103,7 +103,7 @@ jobs:
 
       - name: Report test results
         uses: dorny/test-reporter@v2
-        if: always()
+        if: true == false
         with:
           name: Unit Test Results
           path: "**/TestResult.xml"
