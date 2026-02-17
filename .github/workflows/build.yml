@@ -79,10 +79,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: _cache/webpack
-          key: webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'yarn.lock') }}
+          key: webpack-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-${{ github.run_id }}
           restore-keys: |
-            webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'yarn.lock') }}
-            webpack-${{ runner.os }}-
+            webpack-${{ runner.os }}-${{ hashFiles('yarn.lock') }}-
 
       - name: Build Backend
         shell: bash
