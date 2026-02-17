@@ -140,6 +140,7 @@ jobs:
         id: gr_meta
         with:
           images: ghcr.io/${{ github.repository }}
+          bake-target: softcover
           tags: |
             type=raw,value=softcover
             type=raw,value=softcover-v${{ env.READARR_VERSION }}
@@ -149,6 +150,7 @@ jobs:
         id: hc_meta
         with:
           images: ghcr.io/${{ github.repository }}
+          bake-target: hardcover
           tags: |
             type=raw,value=hardcover
             type=raw,value=hardcover-v${{ env.READARR_VERSION }}
