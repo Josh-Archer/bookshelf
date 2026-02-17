@@ -84,11 +84,21 @@ jobs:
             webpack-${{ runner.os }}-${{ hashFiles('frontend/src/**/*', 'yarn.lock') }}
             webpack-${{ runner.os }}-
 
-      - name: Build
+      - name: Build Backend
         shell: bash
-        run: ./build.sh --backend --frontend
+        run: ./build.sh --backend &
         env:
           READARRVERSION: ${{ env.READARR_VERSION }}.${{ github.run_number }}
+
+      - name: Build Frontend
+        shell: bash
+        run: ./build.sh --frontend
+        env:
+          READARRVERSION: ${{ env.READARR_VERSION }}.${{ github.run_number }}
+
+      - name: Wait for Backend
+        shell: bash
+        run: wait
 
       - name: Prepare tests
         if: true == false
@@ -148,30 +158,18 @@ jobs:
             type=raw,value=hardcover-v${{ env.READARR_VERSION }}
             type=raw,value=hardcover-v${{ env.READARR_VERSION }}.${{ github.run_number }}
 
-      - uses: docker/build-push-action@v6
+      - name: Build and push
+        uses: docker/bake-action@v6
         with:
-          context: .
-          file: ./docker/Dockerfile
-          platforms: "linux/amd64,linux/arm64"
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ steps.gr_meta.outputs.tags }}
-          labels: ${{ steps.gr_meta.outputs.labels }}
-          build-args: |
-            GIT_BRANCH=${{ env.BUILD_SOURCEBRANCHNAME }}
-            COMMIT_HASH=${{ github.event.pull_request.head.sha || github.sha }}
-            BUILD_DATE=${{ env.DATE }}
-
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./docker/Dockerfile
-          platforms: "linux/amd64,linux/arm64"
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ steps.hc_meta.outputs.tags }}
-          labels: ${{ steps.hc_meta.outputs.labels }}
-          build-args: |
-            GIT_BRANCH=${{ env.BUILD_SOURCEBRANCHNAME }}
-            COMMIT_HASH=${{ github.event.pull_request.head.sha || github.sha }}
-            BUILD_DATE=${{ env.DATE }}
-            METADATA_URL=https://hardcover.bookinfo.pro
-            HARDCOVER=true
+          files: |
+            ./docker-bake.hcl
+            ${{ steps.gr_meta.outputs.bake-file }}
+            ${{ steps.hc_meta.outputs.bake-file }}
+          targets: softcover,hardcover
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+          set: |
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+            *.args.GIT_BRANCH=${{ env.BUILD_SOURCEBRANCHNAME }}
+            *.args.COMMIT_HASH=${{ github.event.pull_request.head.sha || github.sha }}
+            *.args.BUILD_DATE=${{ env.DATE }}
