@@ -58,12 +58,16 @@ namespace NzbDrone.Core.ImportLists.Hardcover
                 return Enumerable.Empty<JToken>();
             }
 
-            // GraphQL shape: data.me[].lists[].list_books[].book AND data.me[].user_books[].book
+            // GraphQL shape: data.me.lists[].list_books[].book AND data.me.user_books[].book
+            // Note: Hardcover's `me` field returns a single object, not an array.
             var me = root["data"]?["me"];
-            if (me != null && me.Type == JTokenType.Array)
+            if (me != null)
             {
+                // Normalize: if me is a single object, wrap it; if array, iterate children
+                var meItems = me.Type == JTokenType.Array ? me.Children() : new[] { me };
+
                 var books = new List<JToken>();
-                foreach (var meItem in me.Children())
+                foreach (var meItem in meItems)
                 {
                     var lists = meItem["lists"];
                     if (lists != null && lists.Type == JTokenType.Array)
