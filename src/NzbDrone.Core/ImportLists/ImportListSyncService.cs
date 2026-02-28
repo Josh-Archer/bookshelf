@@ -119,7 +119,9 @@ namespace NzbDrone.Core.ImportLists
 
                 if (report.Book.IsNotNullOrWhiteSpace() || report.EditionGoodreadsId.IsNotNullOrWhiteSpace())
                 {
-                    if (report.EditionGoodreadsId.IsNullOrWhiteSpace() || report.AuthorGoodreadsId.IsNullOrWhiteSpace() || report.BookGoodreadsId.IsNullOrWhiteSpace())
+                    // If we already have both stable IDs, trust the import list payload and skip remapping.
+                    // Some providers don't include edition IDs; forcing a remap can resolve to a different book.
+                    if (report.AuthorGoodreadsId.IsNullOrWhiteSpace() || report.BookGoodreadsId.IsNullOrWhiteSpace())
                     {
                         MapBookReport(report);
                     }

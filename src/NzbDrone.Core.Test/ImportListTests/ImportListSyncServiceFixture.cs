@@ -91,6 +91,11 @@ namespace NzbDrone.Core.Test.ImportListTests
             _importListReports.First().EditionGoodreadsId = "1234";
         }
 
+        private void WithBookForeignId()
+        {
+            _importListReports.First().BookGoodreadsId = "1940604";
+        }
+
         private void WithSecondBook()
         {
             var importListItem2 = new ImportListItemInfo
@@ -189,6 +194,22 @@ namespace NzbDrone.Core.Test.ImportListTests
 
             Mocker.GetMock<IGoodreadsSearchProxy>()
                 .Verify(v => v.Search(It.IsAny<string>()), Times.Never());
+        }
+
+        [Test]
+        public void should_not_remap_if_book_and_author_ids_are_present_without_edition_id()
+        {
+            WithBook();
+            WithAuthorId();
+            WithBookForeignId();
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IProvideBookInfo>()
+                .Verify(v => v.GetBookInfo(It.IsAny<string>()), Times.Never());
+
+            Mocker.GetMock<IAddBookService>()
+                .Verify(v => v.AddBooks(It.Is<List<Book>>(t => t.Count == 1 && t.First().ForeignBookId == "1940604"), false));
         }
 
         [Test]
