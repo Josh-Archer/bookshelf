@@ -13,7 +13,8 @@ namespace NzbDrone.Core.ImportLists.Hardcover
         {
             RuleFor(c => c.BaseUrl).ValidRootUrl();
             RuleFor(c => c.ApiKey).NotEmpty();
-            RuleFor(c => c.ListIds).NotEmpty();
+            RuleFor(c => c.ListIds).NotEmpty().When(c => c.Statuses == null || !c.Statuses.Any());
+            RuleFor(c => c.Statuses).NotEmpty().When(c => c.ListIds == null || !c.ListIds.Any());
         }
     }
 
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.ImportLists.Hardcover
         {
             BaseUrl = "https://api.hardcover.app";
             ListIds = Array.Empty<string>();
+            Statuses = Array.Empty<int>();
         }
 
         [FieldDefinition(0, Label = "Base URL", HelpText = "Hardcover API base URL")]
@@ -33,7 +35,10 @@ namespace NzbDrone.Core.ImportLists.Hardcover
         [FieldDefinition(1, Label = "API Key", Privacy = PrivacyLevel.ApiKey, HelpText = "Hardcover personal API key (from Settings > API)")]
         public string ApiKey { get; set; }
 
-        [FieldDefinition(2, Type = FieldType.Select, SelectOptionsProviderAction = "getLists", Label = "List", HelpText = "Choose a list from your Hardcover account to sync")]
+        [FieldDefinition(2, Type = FieldType.Select, SelectOptionsProviderAction = "getStatuses", Label = "Statuses", HelpText = "Choose statuses from your Hardcover account to sync")]
+        public IEnumerable<int> Statuses { get; set; }
+
+        [FieldDefinition(3, Type = FieldType.Select, SelectOptionsProviderAction = "getLists", Label = "Lists", HelpText = "Choose lists from your Hardcover account to sync")]
         public IEnumerable<string> ListIds { get; set; }
 
         public string ListId => ListIds?.FirstOrDefault();

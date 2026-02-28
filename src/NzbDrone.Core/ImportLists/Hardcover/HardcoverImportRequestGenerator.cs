@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using NLog;
 using NzbDrone.Common.Http;
@@ -27,33 +28,67 @@ namespace NzbDrone.Core.ImportLists.Hardcover
         {
             var apiKey = NormalizeApiKey(Settings.ApiKey);
 
-            Logger.Info("Hardcover: Fetching books for lists '{0}'", Settings.ListIds);
-
-            // Query to fetch selected lists with their books and author info
-            var graphQlBody = JsonSerializer.Serialize(new
+            if (Settings.ListIds != null && Settings.ListIds.Any())
             {
-                query = @"
-                    query ListBooks($slugs: [String!]!) { me { lists(where: { slug: { _in: $slugs } } ) { slug name list_books { book { id title contributions { author { id name } } } } } } }
-                ",
-                variables = new
+                Logger.Info("Hardcover: Fetching books for lists '{0}'", string.Join(",", Settings.ListIds));
+
+                // Query to fetch selected lists with their books and author info
+                var listGraphQlBody = JsonSerializer.Serialize(new
                 {
-                    slugs = Settings.ListIds
-                }
-            });
+                    query = @"
+                        query ListBooks($slugs: [String!]!) { me { lists(where: { slug: { _in: $slugs } } ) { slug name list_books { book { id title contributions { author { id name } } } } } } }
+                    ",
+                    variables = new
+                    {
+                        slugs = Settings.ListIds
+                    }
+                });
 
-            var request = new HttpRequestBuilder($"{Settings.BaseUrl.TrimEnd('/')}/v1/graphql")
-                .Post()
-                .Accept(HttpAccept.Json)
-                .SetHeader("Authorization", $"Bearer {apiKey}")
-                .SetHeader("X-Api-Key", apiKey)
-                .SetHeader("User-Agent", "Readarr (Hardcover Import)")
-                .SetHeader("Content-Type", "application/json")
-                .KeepAlive()
-                .Build();
+                var listRequest = new HttpRequestBuilder($"{Settings.BaseUrl.TrimEnd('/')}/v1/graphql")
+                    .Post()
+                    .Accept(HttpAccept.Json)
+                    .SetHeader("Authorization", $"Bearer {apiKey}")
+                    .SetHeader("X-Api-Key", apiKey)
+                    .SetHeader("User-Agent", "Readarr (Hardcover Import)")
+                    .SetHeader("Content-Type", "application/json")
+                    .KeepAlive()
+                    .Build();
 
-            request.SetContent(graphQlBody);
+                listRequest.SetContent(listGraphQlBody);
 
-            yield return new ImportListRequest(request);
+                yield return new ImportListRequest(listRequest);
+            }
+
+            if (Settings.Statuses != null && Settings.Statuses.Any())
+            {
+                Logger.Info("Hardcover: Fetching books for statuses '{0}'", string.Join(",", Settings.Statuses));
+
+                // Query to fetch user books by status
+                var statusGraphQlBody = JsonSerializer.Serialize(new
+                {
+                    query = @"
+                        query StatusBooks($statusIds: [Int!]!) { me { user_books(where: { status_id: { _in: $statusIds } } ) { book { id title contributions { author { id name } } } } } }
+                    ",
+                    variables = new
+                    {
+                        statusIds = Settings.Statuses
+                    }
+                });
+
+                var statusRequest = new HttpRequestBuilder($"{Settings.BaseUrl.TrimEnd('/')}/v1/graphql")
+                    .Post()
+                    .Accept(HttpAccept.Json)
+                    .SetHeader("Authorization", $"Bearer {apiKey}")
+                    .SetHeader("X-Api-Key", apiKey)
+                    .SetHeader("User-Agent", "Readarr (Hardcover Import)")
+                    .SetHeader("Content-Type", "application/json")
+                    .KeepAlive()
+                    .Build();
+
+                statusRequest.SetContent(statusGraphQlBody);
+
+                yield return new ImportListRequest(statusRequest);
+            }
         }
 
         private string NormalizeApiKey(string apiKey)

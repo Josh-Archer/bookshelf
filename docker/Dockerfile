@@ -17,7 +17,7 @@ ARG BUILD_DATE
 ARG METADATA_URL=https://api.bookinfo.pro
 ARG HARDCOVER
 
-LABEL maintainer="pennydreadful"
+LABEL maintainer="josh-archer"
 
 ENV METADATA_URL=${METADATA_URL}
 ENV HARDCOVER=${HARDCOVER}
@@ -26,16 +26,16 @@ RUN mkdir -p /app/readarr
 
 RUN --mount=type=bind,source=_output,target=_output \
     case "$TARGETPLATFORM" in \
-    "linux/amd64") cp -r /_output/net6.0/linux-musl-x64 /app/readarr/bin ;; \
-    "linux/arm64") cp -r /_output/net6.0/linux-musl-arm64 /app/readarr/bin ;; \
-    "darwin/amd64") cp -r /_output/net6.0/osx-x64 /app/readarr/bin ;; \
-    "darwin/arm64") cp -r /_output/net6.0/osx-arm64 /app/readarr/bin ;; \
-    "windows/amd64") cp -r /_output/net6.0/win-x64 /app/readarr/bin ;; \
+    "linux/amd64") cp -r /_output/net6.0/linux-musl-x64/publish /app/readarr/bin ;; \
+    "linux/arm64") cp -r /_output/net6.0/linux-musl-arm64/publish /app/readarr/bin ;; \
+    "darwin/amd64") cp -r /_output/net6.0/osx-x64/publish /app/readarr/bin ;; \
+    "darwin/arm64") cp -r /_output/net6.0/osx-arm64/publish /app/readarr/bin ;; \
+    "windows/amd64") cp -r /_output/net6.0/win-x64/publish /app/readarr/bin ;; \
     *) echo "Unknown platform: $TARGETPLATFORM" && exit 1 ;; \
     esac; \
     cp -r /_output/UI /app/readarr/bin/UI
 
-RUN echo -e "UpdateMethod=docker\nBranch=${GIT_BRANCH}\nPackageVersion=${COMMIT_HASH}}\nPackageAuthor=pennydreadful" > /app/readarr/package_info && \
+RUN echo -e "UpdateMethod=docker\nBranch=${GIT_BRANCH}\nPackageVersion=${COMMIT_HASH}}\nPackageAuthor=josh-archer" > /app/readarr/package_info && \
     printf "version: ${COMMIT_HASH}}\nBuild-date: ${BUILD_DATE}" > /build_version
 
 # copy local files

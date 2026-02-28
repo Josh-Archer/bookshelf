@@ -192,6 +192,7 @@ module.exports = (env) => {
             {
               loader: 'babel-loader',
               options: {
+                cacheDirectory: true,
                 configFile: `${frontendFolder}/babel.config.js`,
                 envName: isProduction ? 'production' : 'development',
                 presets: [

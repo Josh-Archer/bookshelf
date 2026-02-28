@@ -43,8 +43,8 @@
     <Configuration Condition="'$(Configuration)'==''">Release</Configuration>
     <!-- Centralize intermediate and default outputs -->
     <BaseIntermediateOutputPath>$(ReadarrRootDir)_temp\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
-    <IntermediateOutputPath>$(ReadarrRootDir)_temp\obj\$(MSBuildProjectName)\$(Configuration)\</IntermediateOutputPath>
-    <OutputPath>$(ReadarrRootDir)_temp\bin\$(Configuration)\$(MSBuildProjectName)\</OutputPath>
+    <IntermediateOutputPath>$(ReadarrRootDir)_temp\obj\$(MSBuildProjectName)\$(RuntimeIdentifier)\$(Configuration)\</IntermediateOutputPath>
+    <OutputPath>$(ReadarrRootDir)_temp\bin\$(Configuration)\$(MSBuildProjectName)\$(RuntimeIdentifier)\</OutputPath>
 
     <!-- Output to _output and _tests respectively -->
     <OutputPath Condition="'$(ReadarrProject)'=='true'">$(ReadarrRootDir)_output\</OutputPath>
