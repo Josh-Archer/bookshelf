@@ -42,7 +42,7 @@
   <PropertyGroup>
     <Configuration Condition="'$(Configuration)'==''">Release</Configuration>
     <!-- Centralize intermediate and default outputs -->
-    <BaseIntermediateOutputPath>$(ReadarrRootDir)_temp\obj\$(MSBuildProjectName)\$(RuntimeIdentifier)\</BaseIntermediateOutputPath>
+    <BaseIntermediateOutputPath>$(ReadarrRootDir)_temp\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
     <IntermediateOutputPath>$(ReadarrRootDir)_temp\obj\$(MSBuildProjectName)\$(RuntimeIdentifier)\$(Configuration)\</IntermediateOutputPath>
     <OutputPath>$(ReadarrRootDir)_temp\bin\$(Configuration)\$(MSBuildProjectName)\$(RuntimeIdentifier)\</OutputPath>
 
