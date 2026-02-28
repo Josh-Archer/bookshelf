@@ -53,6 +53,19 @@ namespace NzbDrone.Core.ImportLists.Hardcover
 
         public override object RequestAction(string action, IDictionary<string, string> query)
         {
+            if (action.Equals("getStatuses", StringComparison.OrdinalIgnoreCase))
+            {
+                var options = new List<object>
+                {
+                    new { Value = 1, Name = "Want to Read" },
+                    new { Value = 2, Name = "Currently Reading" },
+                    new { Value = 3, Name = "Read" },
+                    new { Value = 4, Name = "Did Not Finish" }
+                };
+
+                return new { options };
+            }
+
             if (action.Equals("getLists", StringComparison.OrdinalIgnoreCase))
             {
                 // Return empty options if API key is not set yet (user hasn't entered it)
