@@ -85,7 +85,7 @@ jobs:
 
       - name: Build Backend
         shell: bash
-        run: ./build.sh --backend &
+        run: ./build.sh --backend
         env:
           READARRVERSION: ${{ env.READARR_VERSION }}.${{ github.run_number }}
 
@@ -94,10 +94,6 @@ jobs:
         run: ./build.sh --frontend
         env:
           READARRVERSION: ${{ env.READARR_VERSION }}.${{ github.run_number }}
-
-      - name: Wait for Backend
-        shell: bash
-        run: wait
 
       - name: Prepare tests
         if: true == false
