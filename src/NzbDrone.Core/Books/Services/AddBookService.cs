@@ -103,7 +103,7 @@ namespace NzbDrone.Core.Books
 
         private Book AddSkyhookData(Book newBook)
         {
-            var editionId = newBook.Editions.Value.Single(x => x.Monitored).ForeignEditionId;
+            var selectedEditionId = newBook.Editions?.Value?.FirstOrDefault(x => x.Monitored)?.ForeignEditionId;
 
             Tuple<string, Book, List<AuthorMetadata>> tuple = null;
             try
@@ -124,8 +124,27 @@ namespace NzbDrone.Core.Books
             newBook.Added = DateTime.UtcNow;
 
             newBook.Editions = tuple.Item2.Editions.Value;
-            newBook.Editions.Value.ForEach(x => x.Monitored = false);
-            newBook.Editions.Value.Single(x => x.ForeignEditionId == editionId).Monitored = true;
+
+            if (!string.IsNullOrWhiteSpace(selectedEditionId))
+            {
+                newBook.Editions.Value.ForEach(x => x.Monitored = false);
+                var matchingEdition = newBook.Editions.Value.SingleOrDefault(x => x.ForeignEditionId == selectedEditionId);
+
+                if (matchingEdition != null)
+                {
+                    matchingEdition.Monitored = true;
+                }
+                else if (newBook.Editions.Value.Any())
+                {
+                    // If the requested edition no longer exists, keep behavior deterministic.
+                    newBook.Editions.Value.First().Monitored = true;
+                }
+            }
+            else if (newBook.Editions.Value.Any() && !newBook.Editions.Value.Any(x => x.Monitored))
+            {
+                // Import lists without a specific edition should still import the work.
+                newBook.Editions.Value.First().Monitored = true;
+            }
 
             var metadata = tuple.Item3.FirstOrDefault(x => x.ForeignAuthorId == tuple.Item1);
             newBook.AuthorMetadata = metadata;
