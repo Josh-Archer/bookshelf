@@ -27,68 +27,76 @@ namespace NzbDrone.Core.ImportLists.Hardcover
         private IEnumerable<ImportListRequest> GetPagedRequests()
         {
             var apiKey = NormalizeApiKey(Settings.ApiKey);
+            var slugs = Settings.ListIds?.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray() ?? System.Array.Empty<string>();
+            var statuses = Settings.Statuses?.ToArray() ?? System.Array.Empty<int>();
 
-            if (Settings.ListIds != null && Settings.ListIds.Any())
+            if (slugs.Length == 0 && statuses.Length == 0)
             {
-                Logger.Info("Hardcover: Fetching books for lists '{0}'", string.Join(",", Settings.ListIds));
-
-                // Query to fetch selected lists with their books and author info
-                var listGraphQlBody = JsonSerializer.Serialize(new
-                {
-                    query = @"
-                        query ListBooks($slugs: [String!]!) { me { lists(where: { slug: { _in: $slugs } } ) { slug name list_books { book { id title contributions { author { id name } } } } } } }
-                    ",
-                    variables = new
-                    {
-                        slugs = Settings.ListIds
-                    }
-                });
-
-                var listRequest = new HttpRequestBuilder($"{Settings.BaseUrl.TrimEnd('/')}/v1/graphql")
-                    .Post()
-                    .Accept(HttpAccept.Json)
-                    .SetHeader("Authorization", $"Bearer {apiKey}")
-                    .SetHeader("X-Api-Key", apiKey)
-                    .SetHeader("User-Agent", "Readarr (Hardcover Import)")
-                    .SetHeader("Content-Type", "application/json")
-                    .KeepAlive()
-                    .Build();
-
-                listRequest.SetContent(listGraphQlBody);
-
-                yield return new ImportListRequest(listRequest);
+                yield break;
             }
 
-            if (Settings.Statuses != null && Settings.Statuses.Any())
+            if (slugs.Length > 0)
             {
-                Logger.Info("Hardcover: Fetching books for statuses '{0}'", string.Join(",", Settings.Statuses));
-
-                // Query to fetch user books by status
-                var statusGraphQlBody = JsonSerializer.Serialize(new
-                {
-                    query = @"
-                        query StatusBooks($statusIds: [Int!]!) { me { user_books(where: { status_id: { _in: $statusIds } } ) { book { id title contributions { author { id name } } } } } }
-                    ",
-                    variables = new
-                    {
-                        statusIds = Settings.Statuses
-                    }
-                });
-
-                var statusRequest = new HttpRequestBuilder($"{Settings.BaseUrl.TrimEnd('/')}/v1/graphql")
-                    .Post()
-                    .Accept(HttpAccept.Json)
-                    .SetHeader("Authorization", $"Bearer {apiKey}")
-                    .SetHeader("X-Api-Key", apiKey)
-                    .SetHeader("User-Agent", "Readarr (Hardcover Import)")
-                    .SetHeader("Content-Type", "application/json")
-                    .KeepAlive()
-                    .Build();
-
-                statusRequest.SetContent(statusGraphQlBody);
-
-                yield return new ImportListRequest(statusRequest);
+                Logger.Info("Hardcover: Fetching books for lists '{0}'", string.Join(",", slugs));
             }
+
+            if (statuses.Length > 0)
+            {
+                Logger.Info("Hardcover: Fetching books for statuses '{0}'", string.Join(",", statuses));
+            }
+
+            // Single request for both list and status books. This avoids losing status results when
+            // list results are empty due to import list paging semantics that stop after the first short page.
+            var graphQlBody = JsonSerializer.Serialize(new
+            {
+                query = @"
+                    query ListAndStatusBooks($slugs: [String!]!, $statusIds: [Int!]!) {
+                        me {
+                            lists(where: { slug: { _in: $slugs } }) {
+                                slug
+                                name
+                                list_books {
+                                    book {
+                                        id
+                                        title
+                                        contributions {
+                                            author { id name }
+                                        }
+                                    }
+                                }
+                            }
+                            user_books(where: { status_id: { _in: $statusIds } }) {
+                                book {
+                                    id
+                                    title
+                                    contributions {
+                                        author { id name }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                ",
+                variables = new
+                {
+                    slugs,
+                    statusIds = statuses
+                }
+            });
+
+            var request = new HttpRequestBuilder($"{Settings.BaseUrl.TrimEnd('/')}/v1/graphql")
+                .Post()
+                .Accept(HttpAccept.Json)
+                .SetHeader("Authorization", $"Bearer {apiKey}")
+                .SetHeader("X-Api-Key", apiKey)
+                .SetHeader("User-Agent", "Readarr (Hardcover Import)")
+                .SetHeader("Content-Type", "application/json")
+                .KeepAlive()
+                .Build();
+
+            request.SetContent(graphQlBody);
+
+            yield return new ImportListRequest(request);
         }
 
         private string NormalizeApiKey(string apiKey)
