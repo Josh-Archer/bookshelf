@@ -47,9 +47,9 @@
     <OutputPath>$(ReadarrRootDir)_temp\bin\$(Configuration)\$(MSBuildProjectName)\$(RuntimeIdentifier)\</OutputPath>
 
     <!-- Output to _output and _tests respectively -->
-    <OutputPath Condition="'$(ReadarrProject)'=='true'">$(ReadarrRootDir)_output\</OutputPath>
-    <OutputPath Condition="'$(ReadarrOutputType)'=='Test'">$(ReadarrRootDir)_tests\</OutputPath>
-    <OutputPath Condition="'$(ReadarrOutputType)'=='Update'">$(ReadarrRootDir)_output\Readarr.Update\</OutputPath>
+    <OutputPath Condition="'$(ReadarrProject)'=='true'">$(ReadarrRootDir)_output\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
+    <OutputPath Condition="'$(ReadarrOutputType)'=='Test'">$(ReadarrRootDir)_tests\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
+    <OutputPath Condition="'$(ReadarrOutputType)'=='Update'">$(ReadarrRootDir)_output\Readarr.Update\$(TargetFramework)\$(RuntimeIdentifier)\</OutputPath>
 
     <!-- Paths relative to project file for better readability -->
     <EnableBaseIntermediateOutputPathMismatchWarning>false</EnableBaseIntermediateOutputPathMismatchWarning>
