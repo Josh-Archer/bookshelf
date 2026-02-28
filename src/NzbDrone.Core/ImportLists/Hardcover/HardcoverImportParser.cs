@@ -64,7 +64,9 @@ namespace NzbDrone.Core.ImportLists.Hardcover
             if (me != null)
             {
                 // Normalize: if me is a single object, wrap it; if array, iterate children
-                var meItems = me.Type == JTokenType.Array ? me.Children() : new[] { me };
+                var meItems = me.Type == JTokenType.Array
+                    ? me.Children().AsEnumerable()
+                    : Enumerable.Repeat(me, 1);
 
                 var books = new List<JToken>();
                 foreach (var meItem in meItems)
