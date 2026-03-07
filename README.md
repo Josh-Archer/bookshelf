@@ -26,6 +26,26 @@ provider. This metadata is higher quality but isn't backward-compatible; if
 you're already running Readarr you'll need to redeploy this from scratch.
 Goodreads list imports haven't been tested and likely don't work.
 
+## Multi-User CWA Routing
+
+When using a single `bookshelf` instance to feed Calibre-Web-Automated for more
+than one user:
+
+- Create a separate Hardcover import-list definition per user or per destination
+  route.
+- Set each import list's `RootFolderPath` to a distinct ingest path such as
+  `/cwa-book-ingest/erin` or `/cwa-book-ingest/mine`.
+- In Calibre-Web-Automated, map those folder keys to actual CWA users with the
+  `User-Routed Ingest` setting when the folder name is not already the username.
+
+Current limitation:
+
+- Items are flattened and deduplicated by author/title across enabled import
+  lists before import processing continues.
+- If the same book appears on more than one user's Hardcover list, only one
+  import-list definition survives for that book, so downstream per-user routing
+  is not guaranteed for shared titles.
+
 ## Support
 
 This project won't use Discord for support. If you have a problem please file
