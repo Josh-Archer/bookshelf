@@ -35,6 +35,9 @@ than one user:
   route.
 - Set each import list's `RootFolderPath` to a distinct ingest path such as
   `/cwa-book-ingest/erin` or `/cwa-book-ingest/mine`.
+- The last path segment is just a routing key for CWA. It can be the exact CWA
+  username (for example `erin@archerfamily.io`) or a shorter alias that CWA
+  resolves via its `User-Routed Ingest` mapping.
 - In Calibre-Web-Automated, map those folder keys to actual CWA users with the
   `User-Routed Ingest` setting when the folder name is not already the username.
 
