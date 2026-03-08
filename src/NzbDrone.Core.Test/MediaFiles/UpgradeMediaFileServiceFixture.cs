@@ -8,6 +8,7 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Datastore;
 using NzbDrone.Core.MediaFiles;
+using NzbDrone.Core.MediaFiles.BookImport;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
@@ -120,6 +121,18 @@ namespace NzbDrone.Core.Test.MediaFiles
             GivenSingleTrackWithSingleTrackFile();
 
             Subject.UpgradeBookFile(_trackFile, _localTrack).OldFiles.Count.Should().Be(1);
+        }
+
+        [Test]
+        public void should_throw_root_folder_not_found_when_best_root_folder_cannot_be_resolved()
+        {
+            GivenSingleTrackWithSingleTrackFile();
+
+            Mocker.GetMock<IRootFolderService>()
+                .Setup(c => c.GetBestRootFolder(It.IsAny<string>()))
+                .Returns((RootFolder)null);
+
+            Assert.Throws<RootFolderNotFoundException>(() => Subject.UpgradeBookFile(_trackFile, _localTrack));
         }
 
         [Test]

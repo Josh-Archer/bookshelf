@@ -51,8 +51,12 @@ namespace NzbDrone.Core.MediaFiles
 
             var rootFolderPath = _diskProvider.GetParentFolder(localBook.Author.Path);
             var rootFolder = _rootFolderService.GetBestRootFolder(rootFolderPath);
-            var isCalibre = rootFolder.IsCalibreLibrary && rootFolder.CalibreSettings != null;
+            if (rootFolder == null)
+            {
+                throw new RootFolderNotFoundException($"Root folder '{rootFolderPath}' was not found.");
+            }
 
+            var isCalibre = rootFolder.IsCalibreLibrary && rootFolder.CalibreSettings != null;
             var settings = rootFolder.CalibreSettings;
 
             // If there are existing book files and the root folder is missing, throw, so the old file isn't left behind during the import process.
