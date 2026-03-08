@@ -172,6 +172,7 @@ namespace NzbDrone.Core.MediaFiles
             if (file.CalibreId == 0)
             {
                 _logger.Trace($"No calibre id for {file.Path}, skipping writing tags");
+                return;
             }
 
             var rootFolder = _rootFolderService.GetBestRootFolder(file.Path);
@@ -179,6 +180,12 @@ namespace NzbDrone.Core.MediaFiles
             if (rootFolder == null)
             {
                 throw new Exception($"File '{file.Path}' is not in a root folder.");
+            }
+
+            if (!rootFolder.IsCalibreLibrary || rootFolder.CalibreSettings == null)
+            {
+                _logger.Trace($"File '{file.Path}' is not in a calibre root folder, skipping calibre tag write");
+                return;
             }
 
             _calibre.SetFields(file, rootFolder.CalibreSettings, updateCover, embedMetadata);

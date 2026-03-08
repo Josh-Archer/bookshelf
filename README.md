@@ -49,6 +49,25 @@ Current limitation:
   import-list definition survives for that book, so downstream per-user routing
   is not guaranteed for shared titles.
 
+## Import Upgrade Behavior
+
+When `bookshelf` imports a book that already exists in the library, it uses the
+upgrade/replace path instead of the fresh-import path.
+
+- Older builds could throw a `NullReferenceException` if the existing author's
+  path no longer resolved to a configured Readarr root folder during that
+  upgrade flow.
+- Current builds fail with a `RootFolderNotFoundException` instead, which makes
+  the logs actionable and avoids the opaque crash.
+
+If upgrades still retry or keep re-importing the same title, check the author
+record in Readarr:
+
+- Confirm the author path still lives under one of the configured root folders.
+- Look for duplicate author entries (for example `Stephen King` and
+  `Stephen King (1)`), which can leave existing books attached to unexpected
+  author paths and cause upgrade/re-import oddities.
+
 ## Support
 
 This project won't use Discord for support. If you have a problem please file
