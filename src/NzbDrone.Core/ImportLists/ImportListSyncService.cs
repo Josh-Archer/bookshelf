@@ -473,7 +473,7 @@ namespace NzbDrone.Core.ImportLists
 
             if (currentRootFolderPath.IsNullOrWhiteSpace() || currentRootFolderPath.PathEquals(importList.RootFolderPath))
             {
-                if (!existingAuthor.RootFolderPath.PathEquals(importList.RootFolderPath))
+                if (existingAuthor.RootFolderPath.IsNullOrWhiteSpace() || !existingAuthor.RootFolderPath.PathEquals(importList.RootFolderPath))
                 {
                     existingAuthor.RootFolderPath = importList.RootFolderPath;
                     updated = true;
