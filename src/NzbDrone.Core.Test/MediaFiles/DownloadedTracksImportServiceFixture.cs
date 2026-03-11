@@ -7,6 +7,7 @@ using FizzWare.NBuilder;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
+using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Download;
@@ -333,6 +334,33 @@ namespace NzbDrone.Core.Test.MediaFiles
             Subject.ProcessPath(_droneFactory, ImportMode.Copy, _trackedDownload.RemoteBook.Author, _trackedDownload.DownloadItem);
 
             DiskProvider.FolderExists(_subFolders[0]).Should().BeTrue();
+        }
+
+        [Test]
+        public void should_extract_archives_when_folder_has_no_direct_importable_files()
+        {
+            GivenValidAuthor();
+
+            var archivePath = @"c:\drop\foldername\City of Heavenly Fire.zip".AsOsAgnostic();
+            FileSystem.AddFile(archivePath, new MockFileData("zip"));
+
+            var extractedFile = @"c:\drop\foldername\City of Heavenly Fire.epub".AsOsAgnostic();
+
+            Mocker.GetMock<IDiskScanService>()
+                .SetupSequence(c => c.GetBookFiles(It.IsAny<string>(), It.IsAny<bool>()))
+                .Returns(new IFileInfo[0])
+                .Returns(new[] { DiskProvider.GetFileInfo(extractedFile) });
+
+            Mocker.GetMock<IArchiveService>()
+                .Setup(s => s.Extract(archivePath, _subFolders[0]))
+                .Callback(() => FileSystem.AddFile(extractedFile, new MockFileData("epub")));
+
+            Subject.ProcessRootFolder(DiskProvider.GetDirectoryInfo(_droneFactory));
+
+            Mocker.GetMock<IArchiveService>()
+                .Verify(v => v.Extract(archivePath, _subFolders[0]), Times.Once());
+
+            VerifyImport();
         }
 
         private void VerifyNoImport()

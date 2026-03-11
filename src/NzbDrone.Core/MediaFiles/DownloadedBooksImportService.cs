@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Abstractions;
 using System.Linq;
 using NLog;
+using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Books;
@@ -32,6 +33,7 @@ namespace NzbDrone.Core.MediaFiles
         private readonly IParsingService _parsingService;
         private readonly IMakeImportDecision _importDecisionMaker;
         private readonly IImportApprovedBooks _importApprovedTracks;
+        private readonly IArchiveService _archiveService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IRuntimeInfo _runtimeInfo;
         private readonly Logger _logger;
@@ -42,6 +44,7 @@ namespace NzbDrone.Core.MediaFiles
                                              IParsingService parsingService,
                                              IMakeImportDecision importDecisionMaker,
                                              IImportApprovedBooks importApprovedTracks,
+                                             IArchiveService archiveService,
                                              IEventAggregator eventAggregator,
                                              IRuntimeInfo runtimeInfo,
                                              Logger logger)
@@ -52,6 +55,7 @@ namespace NzbDrone.Core.MediaFiles
             _parsingService = parsingService;
             _importDecisionMaker = importDecisionMaker;
             _importApprovedTracks = importApprovedTracks;
+            _archiveService = archiveService;
             _eventAggregator = eventAggregator;
             _runtimeInfo = runtimeInfo;
             _logger = logger;
@@ -193,6 +197,12 @@ namespace NzbDrone.Core.MediaFiles
 
             var audioFiles = _diskScanService.FilterFiles(directoryInfo.FullName, _diskScanService.GetBookFiles(directoryInfo.FullName));
 
+            if (!audioFiles.Any())
+            {
+                ExtractArchivesInFolder(directoryInfo);
+                audioFiles = _diskScanService.FilterFiles(directoryInfo.FullName, _diskScanService.GetBookFiles(directoryInfo.FullName));
+            }
+
             if (downloadClientItem == null)
             {
                 foreach (var audioFile in audioFiles)
@@ -250,6 +260,32 @@ namespace NzbDrone.Core.MediaFiles
             }
 
             return importResults;
+        }
+
+        private void ExtractArchivesInFolder(IDirectoryInfo directoryInfo)
+        {
+            var archives = _diskProvider.GetFiles(directoryInfo.FullName, true)
+                .Where(IsSupportedArchive)
+                .ToList();
+
+            foreach (var archive in archives)
+            {
+                try
+                {
+                    _archiveService.Extract(archive, directoryInfo.FullName);
+                }
+                catch (Exception e)
+                {
+                    _logger.Warn(e, "Failed to extract archive during import: {0}", archive);
+                }
+            }
+        }
+
+        private static bool IsSupportedArchive(string path)
+        {
+            return path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) ||
+                   path.EndsWith(".tgz", StringComparison.OrdinalIgnoreCase) ||
+                   path.EndsWith(".tar.gz", StringComparison.OrdinalIgnoreCase);
         }
 
         private List<ImportResult> ProcessFile(IFileInfo fileInfo, ImportMode importMode, DownloadClientItem downloadClientItem)
