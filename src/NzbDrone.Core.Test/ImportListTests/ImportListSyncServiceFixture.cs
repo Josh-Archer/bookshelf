@@ -4,11 +4,14 @@ using FizzWare.NBuilder;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Core.Books;
+using NzbDrone.Core.Books.Commands;
 using NzbDrone.Core.ImportLists;
 using NzbDrone.Core.ImportLists.Exclusions;
+using NzbDrone.Core.Messaging.Commands;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.RootFolders;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.ImportListTests
@@ -116,6 +119,13 @@ namespace NzbDrone.Core.Test.ImportListTests
                 .Returns(new Author { Id = 1, ForeignAuthorId = _importListReports.First().AuthorGoodreadsId });
         }
 
+        private void WithExistingAuthor(Author author)
+        {
+            Mocker.GetMock<IAuthorService>()
+                .Setup(v => v.FindById(_importListReports.First().AuthorGoodreadsId))
+                .Returns(author);
+        }
+
         private void WithExistingBook()
         {
             Mocker.GetMock<IBookService>()
@@ -154,6 +164,18 @@ namespace NzbDrone.Core.Test.ImportListTests
             Mocker.GetMock<IImportListFactory>()
                 .Setup(v => v.Get(It.IsAny<int>()))
                 .Returns(new ImportListDefinition { ShouldMonitor = monitor });
+        }
+
+        private void WithRoutedImportList(string rootFolderPath, params int[] tags)
+        {
+            Mocker.GetMock<IImportListFactory>()
+                .Setup(v => v.Get(It.IsAny<int>()))
+                .Returns(new ImportListDefinition
+                {
+                    ShouldMonitor = ImportListMonitorType.SpecificBook,
+                    RootFolderPath = rootFolderPath,
+                    Tags = new HashSet<int>(tags)
+                });
         }
 
         [Test]
@@ -262,6 +284,55 @@ namespace NzbDrone.Core.Test.ImportListTests
 
             Mocker.GetMock<IAddBookService>()
                 .Verify(v => v.AddBooks(It.Is<List<Book>>(t => t.Count == 1), false));
+        }
+
+        [Test]
+        public void should_move_existing_shared_root_author_to_routed_import_list_root()
+        {
+            const string sharedRoot = "/media/books";
+            const string routedRoot = "/media/books/cwa-book-ingest/erin@archerfamily.io";
+
+            WithBook();
+            WithBookId();
+            WithAuthorId();
+            WithRoutedImportList(routedRoot, 3);
+
+            var existingAuthor = new Author
+            {
+                Id = 167,
+                ForeignAuthorId = _importListReports.First().AuthorGoodreadsId,
+                Path = "/media/books/Cassandra Clare",
+                RootFolderPath = sharedRoot,
+                Tags = new HashSet<int>()
+            };
+
+            WithExistingAuthor(existingAuthor);
+
+            Mocker.GetMock<IRootFolderService>()
+                .Setup(v => v.GetBestRootFolderPath(existingAuthor.Path))
+                .Returns(sharedRoot);
+
+            Mocker.GetMock<IAuthorService>()
+                .Setup(v => v.UpdateAuthors(It.IsAny<List<Author>>(), false))
+                .Returns<List<Author>, bool>((authors, _) => authors);
+
+            Subject.Execute(new ImportListSyncCommand());
+
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.UpdateAuthors(It.Is<List<Author>>(authors =>
+                    authors.Count == 1 &&
+                    authors[0].Id == existingAuthor.Id &&
+                    authors[0].RootFolderPath == routedRoot &&
+                    authors[0].Tags.Contains(3)), false), Times.Once());
+
+            Mocker.GetMock<IManageCommandQueue>()
+                .Verify(v => v.Push(It.Is<BulkMoveAuthorCommand>(cmd =>
+                    cmd.DestinationRootFolder == routedRoot &&
+                    cmd.Author.Count == 1 &&
+                    cmd.Author[0].AuthorId == existingAuthor.Id &&
+                    cmd.Author[0].SourcePath == existingAuthor.Path),
+                    It.IsAny<CommandPriority>(),
+                    It.IsAny<CommandTrigger>()), Times.Once());
         }
 
         [TestCase(ImportListMonitorType.None, false)]

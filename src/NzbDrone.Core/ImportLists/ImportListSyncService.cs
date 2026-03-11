@@ -14,6 +14,7 @@ using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.MetadataSource;
 using NzbDrone.Core.MetadataSource.Goodreads;
 using NzbDrone.Core.Parser.Model;
+using NzbDrone.Core.RootFolders;
 
 namespace NzbDrone.Core.ImportLists
 {
@@ -30,6 +31,7 @@ namespace NzbDrone.Core.ImportLists
         private readonly IEditionService _editionService;
         private readonly IAddAuthorService _addAuthorService;
         private readonly IAddBookService _addBookService;
+        private readonly IRootFolderService _rootFolderService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IManageCommandQueue _commandQueueManager;
         private readonly Logger _logger;
@@ -45,6 +47,7 @@ namespace NzbDrone.Core.ImportLists
                                      IEditionService editionService,
                                      IAddAuthorService addAuthorService,
                                      IAddBookService addBookService,
+                                     IRootFolderService rootFolderService,
                                      IEventAggregator eventAggregator,
                                      IManageCommandQueue commandQueueManager,
                                      Logger logger)
@@ -60,6 +63,7 @@ namespace NzbDrone.Core.ImportLists
             _editionService = editionService;
             _addAuthorService = addAuthorService;
             _addBookService = addBookService;
+            _rootFolderService = rootFolderService;
             _eventAggregator = eventAggregator;
             _commandQueueManager = commandQueueManager;
             _logger = logger;
@@ -249,6 +253,9 @@ namespace NzbDrone.Core.ImportLists
             {
                 _logger.Debug("{0} [{1}] Rejected, Book Exists in DB.  Ensuring Book and Author monitored.", report.EditionGoodreadsId, report.Book);
 
+                var existingAuthor = existingBook.Author.Value;
+                ReconcileExistingAuthorRouting(importList, existingAuthor);
+
                 if (importList.ShouldMonitorExisting && importList.ShouldMonitor != ImportListMonitorType.None)
                 {
                     if (!existingBook.Monitored)
@@ -261,7 +268,6 @@ namespace NzbDrone.Core.ImportLists
                         }
                     }
 
-                    var existingAuthor = existingBook.Author.Value;
                     var doSearch = false;
 
                     if (importList.ShouldMonitor == ImportListMonitorType.EntireAuthor)
@@ -390,6 +396,7 @@ namespace NzbDrone.Core.ImportLists
             if (existingAuthor != null)
             {
                 _logger.Debug("{0} [{1}] Rejected, Author Exists in DB.  Ensuring Author monitored", report.AuthorGoodreadsId, report.Author);
+                ReconcileExistingAuthorRouting(importList, existingAuthor);
 
                 if (importList.ShouldMonitorExisting && !existingAuthor.Monitored)
                 {
@@ -433,6 +440,98 @@ namespace NzbDrone.Core.ImportLists
             authorsToAdd.Add(toAdd);
 
             return toAdd;
+        }
+
+        private void ReconcileExistingAuthorRouting(ImportListDefinition importList, Author existingAuthor)
+        {
+            if (existingAuthor == null)
+            {
+                return;
+            }
+
+            var updated = false;
+
+            foreach (var tagId in importList.Tags.Where(tagId => !existingAuthor.Tags.Contains(tagId)))
+            {
+                existingAuthor.Tags.Add(tagId);
+                updated = true;
+            }
+
+            if (importList.RootFolderPath.IsNullOrWhiteSpace())
+            {
+                if (updated)
+                {
+                    _authorService.UpdateAuthor(existingAuthor);
+                }
+
+                return;
+            }
+
+            var sourcePath = existingAuthor.Path;
+            var currentRootFolderPath = _rootFolderService.GetBestRootFolderPath(sourcePath);
+            var shouldMove = false;
+
+            if (currentRootFolderPath.IsNullOrWhiteSpace() || currentRootFolderPath.PathEquals(importList.RootFolderPath))
+            {
+                if (!existingAuthor.RootFolderPath.PathEquals(importList.RootFolderPath))
+                {
+                    existingAuthor.RootFolderPath = importList.RootFolderPath;
+                    updated = true;
+                }
+            }
+            else if (ShouldMoveToImportListRoot(currentRootFolderPath, importList.RootFolderPath))
+            {
+                existingAuthor.RootFolderPath = importList.RootFolderPath;
+                updated = true;
+                shouldMove = true;
+            }
+            else
+            {
+                _logger.Warn("Keeping existing author root for {0} at '{1}' instead of routed root '{2}'", existingAuthor.Name, currentRootFolderPath, importList.RootFolderPath);
+            }
+
+            if (!updated)
+            {
+                return;
+            }
+
+            if (!shouldMove)
+            {
+                _authorService.UpdateAuthor(existingAuthor);
+                return;
+            }
+
+            _authorService.UpdateAuthors(new List<Author> { existingAuthor }, false);
+            _commandQueueManager.Push(new BulkMoveAuthorCommand
+            {
+                DestinationRootFolder = importList.RootFolderPath,
+                Author = new List<BulkMoveAuthor>
+                {
+                    new BulkMoveAuthor
+                    {
+                        AuthorId = existingAuthor.Id,
+                        SourcePath = sourcePath
+                    }
+                }
+            });
+        }
+
+        private static bool ShouldMoveToImportListRoot(string currentRootFolderPath, string destinationRootFolderPath)
+        {
+            if (currentRootFolderPath.PathEquals(destinationRootFolderPath))
+            {
+                return false;
+            }
+
+            var currentIsUserRouted = currentRootFolderPath.ContainsIgnoreCase("/cwa-book-ingest/");
+            var destinationIsUserRouted = destinationRootFolderPath.ContainsIgnoreCase("/cwa-book-ingest/");
+
+            if (currentIsUserRouted && destinationIsUserRouted)
+            {
+                return false;
+            }
+
+            return destinationIsUserRouted;
         }
 
         public void Execute(ImportListSyncCommand message)
