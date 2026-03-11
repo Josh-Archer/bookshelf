@@ -40,6 +40,9 @@ than one user:
   resolves via its `User-Routed Ingest` mapping.
 - In Calibre-Web-Automated, map those folder keys to actual CWA users with the
   `User-Routed Ingest` setting when the folder name is not already the username.
+- Current routed-sync builds also reconcile existing shared-root authors onto
+  the import list's routed root and tag them, so older authors already living
+  under `/media/books` can be moved into per-user ingest roots automatically.
 
 Current limitation:
 
@@ -67,6 +70,18 @@ record in Readarr:
 - Look for duplicate author entries (for example `Stephen King` and
   `Stephen King (1)`), which can leave existing books attached to unexpected
   author paths and cause upgrade/re-import oddities.
+
+## Archived Ebook Imports
+
+Some indexers deliver ebooks inside a `.zip` instead of a direct `.epub`,
+`.mobi`, or `.azw3` file.
+
+- Current builds can extract supported ebook files from those archives during
+  import, which allows releases like `City of Heavenly Fire.zip` to complete
+  through the normal Readarr import flow.
+- If an import is stuck with `No files found are eligible for import`, inspect
+  the download folder first and confirm whether the payload is archive-wrapped
+  or junk text instead of a direct ebook file.
 
 ## Support
 
