@@ -7,6 +7,7 @@ using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Books;
 using NzbDrone.Core.Books.Commands;
+using NzbDrone.Core.Books.Events;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Test.Framework;
 using NzbDrone.Test.Common;
@@ -41,7 +42,8 @@ namespace NzbDrone.Core.Test.MusicTests
                     new BulkMoveAuthor
                     {
                         AuthorId = 1,
-                        SourcePath = @"C:\Test\Music\Author".AsOsAgnostic()
+                        SourcePath = @"C:\Test\Music\Author".AsOsAgnostic(),
+                        DestinationPath = @"C:\Test\Music2\Author".AsOsAgnostic()
                     }
                 },
                 DestinationRootFolder = @"C:\Test\Music2".AsOsAgnostic()
@@ -105,21 +107,17 @@ namespace NzbDrone.Core.Test.MusicTests
         [Test]
         public void should_build_new_path_when_root_folder_is_provided()
         {
-            var authorFolder = "Author";
-            var expectedPath = Path.Combine(_bulkCommand.DestinationRootFolder, authorFolder);
-
-            Mocker.GetMock<IBuildFileNames>()
-                .Setup(s => s.GetAuthorFolder(It.IsAny<Author>(), null))
-                .Returns(authorFolder);
-
             Subject.Execute(_bulkCommand);
 
             Mocker.GetMock<IDiskTransferService>()
                 .Verify(
                     v => v.TransferFolder(_bulkCommand.Author.First().SourcePath,
-                                          expectedPath,
+                                          _bulkCommand.Author.First().DestinationPath,
                                           TransferMode.Move),
                     Times.Once());
+
+            Mocker.GetMock<IBuildFileNames>()
+                .Verify(v => v.GetAuthorFolder(It.IsAny<Author>(), null), Times.Never());
         }
 
         [Test]
@@ -139,6 +137,38 @@ namespace NzbDrone.Core.Test.MusicTests
 
             Mocker.GetMock<IBuildFileNames>()
                 .Verify(v => v.GetAuthorFolder(It.IsAny<Author>(), null), Times.Never());
+        }
+
+        [Test]
+        public void should_update_book_file_paths_when_source_folder_is_missing_but_destination_exists()
+        {
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.FolderExists(_command.SourcePath))
+                .Returns(false);
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.FolderExists(_command.DestinationPath))
+                .Returns(true);
+
+            Subject.Execute(_command);
+
+            VerifyEventPublished<AuthorMovedEvent>(Times.Once());
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.UpdateAuthor(It.IsAny<Author>()), Times.Never());
+        }
+
+        [Test]
+        public void should_revert_author_path_when_source_and_destination_are_missing()
+        {
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(s => s.FolderExists(It.IsAny<string>()))
+                .Returns(false);
+
+            Subject.Execute(_command);
+
+            Mocker.GetMock<IAuthorService>()
+                .Verify(v => v.UpdateAuthor(It.IsAny<Author>()), Times.Once());
+            VerifyEventPublished<AuthorMovedEvent>(Times.Never());
         }
     }
 }

@@ -25,7 +25,7 @@ namespace Readarr.Api.V1.Author
         public IActionResult SaveAll([FromBody] AuthorEditorResource resource)
         {
             var authorsToUpdate = _authorService.GetAuthors(resource.AuthorIds);
-            var authorsToMove = new List<BulkMoveAuthor>();
+            var authorsToMove = new Dictionary<int, BulkMoveAuthor>();
 
             foreach (var author in authorsToUpdate)
             {
@@ -52,11 +52,11 @@ namespace Readarr.Api.V1.Author
                 if (resource.RootFolderPath.IsNotNullOrWhiteSpace())
                 {
                     author.RootFolderPath = resource.RootFolderPath;
-                    authorsToMove.Add(new BulkMoveAuthor
+                    authorsToMove[author.Id] = new BulkMoveAuthor
                     {
                         AuthorId = author.Id,
                         SourcePath = author.Path
-                    });
+                    };
                 }
 
                 if (resource.Tags != null)
@@ -79,16 +79,26 @@ namespace Readarr.Api.V1.Author
                 }
             }
 
+            var updatedAuthors = _authorService.UpdateAuthors(authorsToUpdate, !resource.MoveFiles);
+
             if (resource.MoveFiles && authorsToMove.Any())
             {
+                foreach (var author in updatedAuthors)
+                {
+                    if (authorsToMove.TryGetValue(author.Id, out var authorToMove))
+                    {
+                        authorToMove.DestinationPath = author.Path;
+                    }
+                }
+
                 _commandQueueManager.Push(new BulkMoveAuthorCommand
                 {
                     DestinationRootFolder = resource.RootFolderPath,
-                    Author = authorsToMove
+                    Author = authorsToMove.Values.ToList()
                 });
             }
 
-            return Accepted(_authorService.UpdateAuthors(authorsToUpdate, !resource.MoveFiles).ToResource());
+            return Accepted(updatedAuthors.ToResource());
         }
 
         [HttpDelete]

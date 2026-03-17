@@ -17,6 +17,7 @@ namespace NzbDrone.Core.Books.Commands
     {
         public int AuthorId { get; set; }
         public string SourcePath { get; set; }
+        public string DestinationPath { get; set; }
 
         public bool Equals(BulkMoveAuthor other)
         {

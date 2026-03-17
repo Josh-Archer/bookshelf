@@ -43,7 +43,15 @@ namespace NzbDrone.Core.Books
         {
             if (!_diskProvider.FolderExists(sourcePath))
             {
+                if (sourcePath.PathEquals(destinationPath) || _diskProvider.FolderExists(destinationPath))
+                {
+                    _logger.ProgressInfo("{0} is already in the specified location '{1}'. Updating stored file paths.", author.Name, destinationPath);
+                    _eventAggregator.PublishEvent(new AuthorMovedEvent(author, sourcePath, destinationPath));
+                    return;
+                }
+
                 _logger.Debug("Folder '{0}' for '{1}' does not exist, not moving.", sourcePath, author.Name);
+                RevertPath(author.Id, sourcePath);
                 return;
             }
 
@@ -105,7 +113,7 @@ namespace NzbDrone.Core.Books
             {
                 var s = authorToMove[index];
                 var author = _authorService.GetAuthor(s.AuthorId);
-                var destinationPath = Path.Combine(destinationRootFolder, _filenameBuilder.GetAuthorFolder(author));
+                var destinationPath = s.DestinationPath ?? Path.Combine(destinationRootFolder, _filenameBuilder.GetAuthorFolder(author));
 
                 MoveSingleAuthor(author, s.SourcePath, destinationPath, index, authorToMove.Count);
             }
