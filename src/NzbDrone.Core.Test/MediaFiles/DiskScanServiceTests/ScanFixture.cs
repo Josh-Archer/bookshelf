@@ -560,5 +560,35 @@ namespace NzbDrone.Core.Test.MediaFiles.DiskScanServiceTests
                                           l[0].MediaInfo.AudioFormat == localTrack.FileTrackInfo.MediaInfo.AudioFormat)),
                         Times.Once());
         }
+
+        [Test]
+        public void should_sanitize_control_characters_in_scanned_file_names()
+        {
+            GivenAuthorFolder();
+
+            var dirtyFile = Path.Combine(_author.Path, "Season 1", "file1\r.mobi");
+            var cleanFile = Path.Combine(_author.Path, "Season 1", "file1.mobi");
+            var cleanFileInfo = new Mock<IFileInfo>();
+            cleanFileInfo.SetupGet(v => v.FullName).Returns(cleanFile);
+            cleanFileInfo.SetupGet(v => v.Name).Returns(Path.GetFileName(cleanFile));
+            cleanFileInfo.SetupGet(v => v.Extension).Returns(".mobi");
+
+            GivenFiles(new List<string> { dirtyFile });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Setup(v => v.GetFileInfo(cleanFile))
+                .Returns(cleanFileInfo.Object);
+
+            Subject.Scan(new List<string> { _author.Path });
+
+            Mocker.GetMock<IDiskProvider>()
+                .Verify(v => v.MoveFile(dirtyFile, cleanFile, false), Times.Once());
+
+            Mocker.GetMock<IMakeImportDecision>()
+                .Verify(v => v.GetImportDecisions(It.Is<List<IFileInfo>>(l => l.Any(f => f.FullName == cleanFile)),
+                    It.IsAny<IdentificationOverrides>(),
+                    It.IsAny<ImportDecisionMakerInfo>(),
+                    It.IsAny<ImportDecisionMakerConfig>()), Times.Once());
+        }
     }
 }

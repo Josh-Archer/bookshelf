@@ -645,6 +645,25 @@ namespace NzbDrone.Core.Test.OrganizerTests.FileNameBuilderTests
                    .Should().Be(expectedFileName);
         }
 
+        [Test]
+        public void should_strip_control_characters_from_original_file_name_when_renaming_is_disabled()
+        {
+            _namingConfig.RenameBooks = false;
+            _trackFile.Path = "Bad\rTitle.epub";
+
+            Subject.BuildBookFileName(_author, _edition, _trackFile)
+                   .Should().Be("BadTitle");
+        }
+
+        [Test]
+        public void should_strip_control_characters_from_author_folder_names()
+        {
+            _author.Name = "Blake\r Crouch";
+
+            Subject.GetAuthorFolder(_author)
+                   .Should().Be("Blake Crouch");
+        }
+
         [TestCase("0SEC")]
         [TestCase("2HD")]
         [TestCase("IMMERSE")]

@@ -271,6 +271,8 @@ namespace NzbDrone.Core.MediaFiles
             var mediaFileList = filesOnDisk.Where(file => MediaFileExtensions.AllExtensions.Contains(file.Extension))
                 .ToArray();
 
+            mediaFileList = LibraryPathSanitizer.SanitizeBookFilesOnDisk(_diskProvider, mediaFileList, _logger);
+
             _logger.Debug("{0} book files were found in {1}", mediaFileList.Length, path);
 
             return mediaFileList;

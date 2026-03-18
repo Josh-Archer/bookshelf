@@ -86,6 +86,7 @@ namespace NzbDrone.Core.MediaFiles
 
             if (_diskProvider.FolderExists(path))
             {
+                path = LibraryPathSanitizer.SanitizeDirectoryNameOnDisk(_diskProvider, path, _logger);
                 var directoryInfo = _diskProvider.GetDirectoryInfo(path);
 
                 if (author == null)
@@ -98,6 +99,7 @@ namespace NzbDrone.Core.MediaFiles
 
             if (_diskProvider.FileExists(path))
             {
+                path = LibraryPathSanitizer.SanitizeFileNameOnDisk(_diskProvider, path, _logger);
                 var fileInfo = _diskProvider.GetFileInfo(path);
 
                 if (author == null)
@@ -159,6 +161,9 @@ namespace NzbDrone.Core.MediaFiles
 
         private List<ImportResult> ProcessFolder(IDirectoryInfo directoryInfo, ImportMode importMode, DownloadClientItem downloadClientItem)
         {
+            var sanitizedPath = LibraryPathSanitizer.SanitizeDirectoryNameOnDisk(_diskProvider, directoryInfo.FullName, _logger);
+            directoryInfo = _diskProvider.GetDirectoryInfo(sanitizedPath);
+
             var cleanedUpName = GetCleanedUpFolderName(directoryInfo.Name);
             var author = _parsingService.GetAuthor(cleanedUpName);
 
@@ -290,6 +295,9 @@ namespace NzbDrone.Core.MediaFiles
 
         private List<ImportResult> ProcessFile(IFileInfo fileInfo, ImportMode importMode, DownloadClientItem downloadClientItem)
         {
+            var sanitizedPath = LibraryPathSanitizer.SanitizeFileNameOnDisk(_diskProvider, fileInfo.FullName, _logger);
+            fileInfo = _diskProvider.GetFileInfo(sanitizedPath);
+
             var author = _parsingService.GetAuthor(Path.GetFileNameWithoutExtension(fileInfo.Name));
 
             if (author == null)

@@ -78,7 +78,7 @@ namespace NzbDrone.Core.Organizer
 
             if (!namingConfig.RenameBooks)
             {
-                return GetOriginalFileName(bookFile);
+                return CleanFileName(GetOriginalFileName(bookFile), namingConfig);
             }
 
             if (namingConfig.StandardBookFormat.IsNullOrWhiteSpace())
@@ -230,6 +230,7 @@ namespace NzbDrone.Core.Organizer
 
         public static string CleanFolderName(string name)
         {
+            name = LibraryPathSanitizer.SanitizeComponent(name);
             name = FileNameCleanupRegex.Replace(name, match => match.Captures[0].Value[0].ToString());
 
             return name.Trim(' ', '.');
@@ -499,7 +500,7 @@ namespace NzbDrone.Core.Organizer
 
         private static string CleanFileName(string name, NamingConfig namingConfig)
         {
-            var result = name;
+            var result = LibraryPathSanitizer.SanitizeComponent(name);
             string[] badCharacters = { "\\", "/", "<", ">", "?", "*", "|", "\"" };
             string[] goodCharacters = { "+", "+", "", "", "!", "-", "", "" };
 
