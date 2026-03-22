@@ -104,5 +104,23 @@ namespace NzbDrone.Core.Test.MediaFiles
 
             Subject.Clean(_author.Path, FilesOnDisk(trackFiles));
         }
+
+        [Test]
+        public void should_not_delete_missing_files_from_cwa_user_routed_ingest_folder()
+        {
+            var routedFolder = @"/media/books/cwa-book-ingest/josh@archerfamily.io/Brandon Sanderson".AsOsAgnostic();
+
+            var trackFiles = Builder<BookFile>.CreateListOfSize(3)
+                .All()
+                .With(x => x.Path = Path.Combine(routedFolder, Path.GetRandomFileName()))
+                .Build();
+
+            GivenTrackFiles(trackFiles);
+
+            Subject.Clean(routedFolder, new List<string>());
+
+            Mocker.GetMock<IMediaFileService>()
+                .Verify(c => c.DeleteMany(It.IsAny<List<BookFile>>(), DeleteMediaFileReason.MissingFromDisk), Times.Never());
+        }
     }
 }
