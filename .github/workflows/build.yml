@@ -12,7 +12,6 @@ on:
       - "src/Readarr.Api.*/openapi.json"
   pull_request:
     paths-ignore:
-      - ".github/**"
       - "src/NzbDrone.Core/Localization/Core"
       - "src/Readarr.Api.*/openapi.json"
 
