@@ -26,7 +26,7 @@ env:
 
 jobs:
   build:
-    runs-on: home-gh-runner-bookshelf
+    runs-on: uecb-shared
     steps:
       - uses: actions/checkout@v4
         with:
